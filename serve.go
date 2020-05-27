@@ -4,9 +4,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/browser"
 )
 
 type fileSystem struct {
@@ -20,7 +23,7 @@ func (fs *fileSystem) Open(name string) (http.File, error) {
 	return os.Open(name)
 }
 
-func doServe(cfg Config, dir string) error {
+func doServe(cfg Config, dir string, openBrowser bool) error {
 	func(wd string, err error) {
 		log.Printf("debug: wd=%q err=%q", wd, err)
 	}(os.Getwd())
@@ -41,5 +44,19 @@ func doServe(cfg Config, dir string) error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	return srv.Serve(l)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Serve(l)
+	}()
+
+	if openBrowser {
+		var u url.URL
+		u.Scheme = "http"
+		u.Host = l.Addr().String()
+		if err := browser.OpenURL(u.String()); err != nil {
+			log.Printf("warn: failed to open url %q: %v", u, err)
+		}
+	}
+
+	return <-errCh
 }

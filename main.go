@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/comail/colog"
-	_ "github.com/pkg/browser"
 	"github.com/spf13/pflag"
 )
 
@@ -42,14 +41,16 @@ func run(stdout, stderr io.Writer, args []string) int {
 	colog.SetOutput(stderr)
 
 	var (
-		configPath    string
-		listenAddress string
-		loglevel      string
-		logfile       string
+		configPath      string
+		listenAddress   string
+		autoOpenBrowser bool
+		loglevel        string
+		logfile         string
 	)
 	flgs := pflag.NewFlagSet(progName, pflag.ContinueOnError)
 	flgs.StringVarP(&configPath, "config", "", DefaultConfigPath, "The config file `path`")
 	flgs.StringVarP(&listenAddress, "listen", "l", "", "Listen `address` for tcp (default "+DefaultListenAddress+" or from config file)")
+	flgs.BoolVarP(&autoOpenBrowser, "open-browser", "o", false, "Open browser with serving directory")
 	flgs.StringVarP(&loglevel, "log-level", "", "info", "The minimul log `level` to output (choices: trace, debug, info, warn, error, alert)")
 	flgs.StringVarP(&logfile, "log-file", "", "-", "The log output file `path`")
 	if err := flgs.Parse(args[1:]); errors.Is(err, pflag.ErrHelp) {
@@ -84,7 +85,7 @@ func run(stdout, stderr io.Writer, args []string) int {
 		cfg.ListenAddress = listenAddress
 	}
 
-	if err := doServe(cfg, dir); err != nil {
+	if err := doServe(cfg, dir, autoOpenBrowser); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
